@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mRNA 火山图动态映射</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <h1>mRNA 差异表达火山图交互平台</h1>
+        <p>悬浮或点击数据库记录，实时定位火山图散点并显示坐标</p>
+      </header>
+
+      <section class="toolbar">
+        <label>
+          数据集
+          <select id="datasetSelect"></select>
+        </label>
+        <label>
+          比较组
+          <select id="comparisonSelect"></select>
+        </label>
+        <label>
+          基因搜索
+          <input id="geneSearch" type="text" placeholder="输入基因名过滤表格" />
+        </label>
+        <button id="clearPinBtn" type="button">取消固定点</button>
+      </section>
+
+      <section class="content-grid">
+        <article class="panel chart-panel">
+          <div class="panel-head">
+            <h2>火山图</h2>
+            <span id="pointCounter"></span>
+          </div>
+          <div id="volcanoChart" class="chart"></div>
+        </article>
+
+        <article class="panel info-panel">
+          <h2>当前点坐标</h2>
+          <div id="pointInfo" class="point-info">
+            <p>未选择数据点</p>
+          </div>
+          <div class="legend">
+            <span class="tag up">Up</span>
+            <span class="tag down">Down</span>
+            <span class="tag ns">NotSig</span>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="panel-head">
+          <h2>数据库结果（Top 200）</h2>
+          <span>鼠标悬浮/点击任意行即可联动图中点位</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Gene</th>
+                <th>log2FC (X)</th>
+                <th>-log10(FDR) (Y)</th>
+                <th>FDR</th>
+                <th>Regulation</th>
+              </tr>
+            </thead>
+            <tbody id="resultTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
