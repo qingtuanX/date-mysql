@@ -194,7 +194,7 @@ app.get("/api/immune", async (req, res) => {
   }
 
   const maxRows = Math.max(50, Math.min(2000, Number(limit || 500)));
-  const filePath = path.join(projectRoot, "mRNA", dataset, "tme_combine.csv");
+  const filePath = path.join(projectRoot, "mRNA", "免疫浸润", dataset, "tme_combine.csv");
 
   try {
     await fs.promises.access(filePath, fs.constants.R_OK);

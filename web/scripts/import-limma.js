@@ -14,9 +14,18 @@ async function findResultFiles() {
   const entries = await fs.promises.readdir(mrnaRoot, { withFileTypes: true });
   const files = [];
 
-  for (const entry of entries) {
+  // Look in 差异化分析 subdirectory (corrected location)
+  const diffDir = path.join(mrnaRoot, "差异化分析");
+  let diffEntries = [];
+  try {
+    diffEntries = await fs.promises.readdir(diffDir, { withFileTypes: true });
+  } catch (e) {
+    diffEntries = [];
+  }
+
+  for (const entry of diffEntries) {
     if (!entry.isDirectory() || !datasetPattern.test(entry.name)) continue;
-    const datasetDir = path.join(mrnaRoot, entry.name);
+    const datasetDir = path.join(diffDir, entry.name);
     const children = await fs.promises.readdir(datasetDir, { withFileTypes: true });
     for (const child of children) {
       if (!child.isFile()) continue;
