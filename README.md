@@ -4,6 +4,15 @@
 
 ---
 
+## 在线访问 | Live Demo
+
+| 站点 | 地址 |
+|------|------|
+| **交互式分析平台** (部署服务器) | http://49.235.115.164 |
+| **图表展示页** (GitHub Pages) | https://qingtuanx.github.io/date-mysql/ |
+
+---
+
 ## 项目简介 | Overview
 
 面向结核病/肺病 mRNA 转录组数据，整合 **R limma-voom 差异分析**、**IOBR 免疫浸润去卷积** 和 **MySQL + Node.js 交互可视化**。
