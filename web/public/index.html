@@ -4,36 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>mRNA 火山图动态映射</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" href="/styles.css" />
-    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   </head>
   <body>
     <main class="page">
       <header class="hero">
-        
         <p>悬浮或点击数据库记录，实时定位火山图散点并显示坐标</p>
       </header>
 
       <section class="toolbar">
-        <label>
-          数据集
-          <select id="datasetSelect"></select>
-        </label>
-        <label>
-          比较组
-          <select id="comparisonSelect"></select>
-        </label>
-        <label>
-          基因搜索
-          <input id="geneSearch" type="text" placeholder="输入基因名过滤表格" />
-        </label>
-        <button id="clearPinBtn" type="button">取消固定点</button>
+        <label>数据集<select id="datasetSelect"></select></label>
+        <label>比较组<select id="comparisonSelect"></select></label>
+        <label>基因搜索<input id="geneSearch" type="text" placeholder="输入基因名" autocomplete="off" /></label>
+        <button id="clearPinBtn" type="button">取消固定</button>
       </section>
 
       <section class="view-toggle">
@@ -41,21 +24,16 @@
         <button id="viewImmuneBtn" class="view-btn" type="button">免疫浸润</button>
       </section>
 
+      <!-- ===== 差异分析 ===== -->
       <section id="diffSection" class="view-section">
         <section class="content-grid">
           <article class="panel chart-panel">
-            <div class="panel-head">
-              <h2>火山图</h2>
-              <span id="pointCounter"></span>
-            </div>
+            <div class="panel-head"><h2>火山图</h2><span id="pointCounter"></span></div>
             <div id="volcanoChart" class="chart"></div>
           </article>
-
           <article class="panel info-panel">
             <h2>当前点坐标</h2>
-            <div id="pointInfo" class="point-info">
-              <p>未选择数据点</p>
-            </div>
+            <div id="pointInfo" class="point-info"><p>未选择数据点</p></div>
             <div class="legend">
               <span class="tag up">Up</span>
               <span class="tag down">Down</span>
@@ -63,62 +41,36 @@
             </div>
           </article>
         </section>
-
         <section class="panel table-panel">
-          <div class="panel-head">
-            <h2>数据库结果（Top 200）</h2>
-            <span>鼠标悬浮/点击任意行即可联动图中点位</span>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Gene</th>
-                  <th>log2FC (X)</th>
-                  <th>-log10(FDR) (Y)</th>
-                  <th>FDR</th>
-                  <th>Regulation</th>
-                </tr>
-              </thead>
-              <tbody id="resultTableBody"></tbody>
-            </table>
-          </div>
+          <div class="panel-head"><h2>Top 200 差异基因</h2></div>
+          <div class="table-wrap" id="diffTableWrap"><table><thead><tr><th>Gene</th><th>log2FC</th><th>-log10(FDR)</th><th>FDR</th><th>Reg</th></tr></thead><tbody id="resultTableBody"></tbody></table></div>
         </section>
       </section>
 
+      <!-- ===== 免疫浸润 ===== -->
       <section id="immuneSection" class="panel immune-panel view-section is-hidden">
-        <div class="panel-head">
-          <h2>免疫浸润分析</h2>
-          <span id="immuneCounter"></span>
-        </div>
+        <div class="panel-head"><h2>免疫浸润分析</h2><span id="immuneCounter"></span></div>
         <div class="immune-controls">
-          <label>
-            RNA组
-            <select id="immuneGroupSelect"></select>
-          </label>
-          <label>
-            样本搜索
-            <input id="immuneSearch" type="text" placeholder="输入样本ID过滤" />
-          </label>
-          <label>
-            指标搜索
-            <input id="immuneMetricSearch" type="text" placeholder="输入指标名过滤" />
-          </label>
+          <label>RNA组<select id="immuneGroupSelect"></select></label>
+          <label>样本搜索<input id="immuneSearch" type="text" placeholder="样本ID" autocomplete="off" /></label>
+          <label>指标搜索<input id="immuneMetricSearch" type="text" placeholder="指标名" autocomplete="off" /></label>
         </div>
         <div class="immune-grid">
-          <div id="immuneHeatmap" class="chart chart-heatmap"></div>
-          <div class="table-wrap">
-            <table class="immune-table">
-              <thead>
-                <tr id="immuneTableHead"></tr>
-              </thead>
-              <tbody id="immuneTableBody"></tbody>
-            </table>
+          <div class="chart-and-info">
+            <div id="immuneHeatmap" class="chart chart-heatmap"></div>
+            <article class="panel info-panel immune-info-panel">
+              <h2>免疫指标详情</h2>
+              <div id="immunePointInfo" class="point-info"><p>点击热力图查看</p></div>
+            </article>
+          </div>
+          <div class="table-wrap" id="immuneTableWrap">
+            <table class="immune-table"><thead><tr id="immuneTableHead"></tr></thead><tbody id="immuneTableBody"></tbody></table>
           </div>
         </div>
       </section>
     </main>
 
-    <script src="/app.js"></script>
+    <script src="/app.js" defer></script>
+    <script>window.onload=function(){var s=document.createElement('script');s.src='https://cdn.plot.ly/plotly-2.35.2.min.js';s.onload=function(){window.dispatchEvent(new Event('plotly-loaded'))};document.head.appendChild(s)}</script>
   </body>
 </html>
