@@ -22,37 +22,41 @@ body {
   background: radial-gradient(circle at top right, #e8f4ff, var(--bg) 45%), var(--bg);
 }
 
-.page {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px;
-  display: grid;
-  gap: 16px;
-}
-
-.hero {
-  background: linear-gradient(135deg, #0f6cab, #0d8a91);
-  color: #fff;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: var(--shadow);
-}
-
-.hero h1 {
-  margin: 0 0 8px;
-  font-size: 24px;
-}
-
-.hero p {
-  margin: 0;
-  opacity: 0.92;
-}
-
 .toolbar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
+}
+
+.view-toggle {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  background: #e8f2fb;
+  padding: 6px;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.view-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.view-btn.is-active {
+  background: #ffffff;
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(22, 32, 42, 0.12);
+}
+
+.view-section.is-hidden {
+  display: none;
 }
 
 .toolbar label {
@@ -190,6 +194,28 @@ tbody tr.active {
   background: #d9ecff;
 }
 
+.immune-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.immune-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.chart-heatmap {
+  height: 520px;
+}
+
+.immune-table {
+  min-width: 1200px;
+}
+
 @media (max-width: 960px) {
   .toolbar {
     grid-template-columns: 1fr 1fr;
@@ -200,6 +226,18 @@ tbody tr.active {
   }
 
   .chart {
+    height: 420px;
+  }
+
+  .immune-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .immune-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-heatmap {
     height: 420px;
   }
 }

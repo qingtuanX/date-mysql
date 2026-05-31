@@ -5,7 +5,12 @@ const state = {
   tableRows: [],
   pointIndexById: new Map(),
   activePointId: null,
-  pinnedPointId: null
+  pinnedPointId: null,
+  immuneColumns: [],
+  immuneRows: [],
+  immuneGroups: [],
+  immuneGroup: "All",
+  immuneTruncated: false
 };
 
 const refs = {
@@ -16,7 +21,18 @@ const refs = {
   pointInfo: document.getElementById("pointInfo"),
   volcanoChart: document.getElementById("volcanoChart"),
   resultTableBody: document.getElementById("resultTableBody"),
-  pointCounter: document.getElementById("pointCounter")
+  pointCounter: document.getElementById("pointCounter"),
+  immuneGroupSelect: document.getElementById("immuneGroupSelect"),
+  immuneSearch: document.getElementById("immuneSearch"),
+  immuneMetricSearch: document.getElementById("immuneMetricSearch"),
+  immuneHeatmap: document.getElementById("immuneHeatmap"),
+  immuneTableHead: document.getElementById("immuneTableHead"),
+  immuneTableBody: document.getElementById("immuneTableBody"),
+  immuneCounter: document.getElementById("immuneCounter"),
+  viewDiffBtn: document.getElementById("viewDiffBtn"),
+  viewImmuneBtn: document.getElementById("viewImmuneBtn"),
+  diffSection: document.getElementById("diffSection"),
+  immuneSection: document.getElementById("immuneSection")
 };
 
 function escapeHtml(value) {
@@ -39,6 +55,12 @@ function fmt(number, digits = 4) {
   return Number(number).toFixed(digits);
 }
 
+function formatImmuneValue(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  if (typeof value === "number") return fmt(value, 4);
+  return escapeHtml(value);
+}
+
 async function requestJson(url) {
   const resp = await fetch(url);
   if (!resp.ok) {
@@ -50,13 +72,23 @@ async function requestJson(url) {
 
 async function init() {
   bindEvents();
+  setActiveView("diff");
   await loadDatasets();
 }
 
 function bindEvents() {
+  refs.viewDiffBtn.addEventListener("click", () => {
+    setActiveView("diff");
+  });
+
+  refs.viewImmuneBtn.addEventListener("click", () => {
+    setActiveView("immune");
+  });
+
   refs.datasetSelect.addEventListener("change", async () => {
     await loadComparisons();
     await loadAndRenderAll();
+    await loadImmuneData();
   });
 
   refs.comparisonSelect.addEventListener("change", async () => {
@@ -65,6 +97,22 @@ function bindEvents() {
 
   refs.geneSearch.addEventListener("input", debounce(async () => {
     renderTable();
+  }, 250));
+
+  refs.immuneGroupSelect.addEventListener("change", () => {
+    state.immuneGroup = refs.immuneGroupSelect.value;
+    renderImmuneHeatmap();
+    renderImmuneTable();
+  });
+
+  refs.immuneSearch.addEventListener("input", debounce(() => {
+    renderImmuneHeatmap();
+    renderImmuneTable();
+  }, 250));
+
+  refs.immuneMetricSearch.addEventListener("input", debounce(() => {
+    renderImmuneHeatmap();
+    renderImmuneTable();
   }, 250));
 
   refs.clearPinBtn.addEventListener("click", () => {
@@ -83,6 +131,7 @@ async function loadDatasets() {
 
   await loadComparisons();
   await loadAndRenderAll();
+  await loadImmuneData();
 }
 
 async function loadComparisons() {
@@ -120,6 +169,229 @@ async function loadAndRenderAll() {
   renderChart();
   renderTable();
   updatePointInfo(null);
+}
+
+async function loadImmuneData() {
+  const dataset = refs.datasetSelect.value;
+  if (!dataset) return;
+
+  try {
+    const payload = await requestJson(
+      `/api/immune?dataset=${encodeURIComponent(dataset)}&limit=2000`
+    );
+    state.immuneColumns = payload.columns || [];
+    state.immuneRows = payload.rows || [];
+    state.immuneTruncated = Boolean(payload.truncated);
+
+    state.immuneGroups = buildImmuneGroups(state.immuneRows);
+    if (!state.immuneGroups.includes(state.immuneGroup)) {
+      state.immuneGroup = "All";
+    }
+
+    updateImmuneGroupOptions();
+    renderImmuneHeatmap();
+    renderImmuneTable();
+  } catch (error) {
+    state.immuneColumns = [];
+    state.immuneRows = [];
+    state.immuneGroups = [];
+    state.immuneGroup = "All";
+    state.immuneTruncated = false;
+    refs.immuneTableHead.innerHTML = "";
+    refs.immuneTableBody.innerHTML = "";
+    refs.immuneCounter.textContent = `免疫浸润加载失败: ${error.message}`;
+    refs.immuneHeatmap.innerHTML = "";
+  }
+}
+
+function updateImmuneGroupOptions() {
+  const options = ["All", ...state.immuneGroups];
+  refs.immuneGroupSelect.innerHTML = options
+    .map((group) => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`)
+    .join("");
+  refs.immuneGroupSelect.value = state.immuneGroup;
+}
+
+function inferImmuneGroup(sampleId) {
+  if (!sampleId) return "Unknown";
+  const text = String(sampleId);
+  const parts = text.split("_");
+  if (parts.length > 1) {
+    const tail = parts[parts.length - 1];
+    if (/^[A-Za-z]+$/.test(tail)) return tail;
+  }
+  const prefix = text.match(/^[A-Za-z]+/);
+  if (prefix) return prefix[0];
+  return "Unknown";
+}
+
+function buildImmuneGroups(rows) {
+  const set = new Set();
+  for (const row of rows) {
+    set.add(inferImmuneGroup(row.ID));
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+function getFilteredImmuneRows() {
+  const keyword = refs.immuneSearch.value.trim().toLowerCase();
+  return state.immuneRows.filter((row) => {
+    const group = inferImmuneGroup(row.ID);
+    if (state.immuneGroup !== "All" && group !== state.immuneGroup) return false;
+    if (!keyword) return true;
+    return String(row.ID).toLowerCase().includes(keyword);
+  });
+}
+
+function getFilteredImmuneMetrics() {
+  const keyword = refs.immuneMetricSearch.value.trim().toLowerCase();
+  const metrics = state.immuneColumns.filter((col) => col !== "ID");
+  if (!keyword) return metrics;
+  return metrics.filter((metric) => metric.toLowerCase().includes(keyword));
+}
+
+function normalizeRow(values) {
+  const numeric = values.filter((v) => typeof v === "number" && Number.isFinite(v));
+  if (numeric.length === 0) return values.map(() => 0);
+  const mean = numeric.reduce((sum, v) => sum + v, 0) / numeric.length;
+  const variance = numeric.reduce((sum, v) => sum + (v - mean) ** 2, 0) / numeric.length;
+  const sd = Math.sqrt(variance) || 1;
+  return values.map((v) => {
+    if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+    return (v - mean) / sd;
+  });
+}
+
+function renderImmuneHeatmap() {
+  const metrics = getFilteredImmuneMetrics();
+  if (state.immuneRows.length === 0 || metrics.length === 0) {
+    refs.immuneHeatmap.innerHTML = "<p>暂无可视化数据</p>";
+    return;
+  }
+
+  const rows = getFilteredImmuneRows();
+  if (rows.length === 0) {
+    refs.immuneHeatmap.innerHTML = "<p>未找到符合条件的样本</p>";
+    return;
+  }
+
+  const grouped = new Map();
+  for (const row of rows) {
+    const group = inferImmuneGroup(row.ID);
+    if (!grouped.has(group)) grouped.set(group, []);
+    grouped.get(group).push(row);
+  }
+
+  const groupOrder = state.immuneGroup === "All" ? state.immuneGroups : [state.immuneGroup];
+  const orderedRows = [];
+  const groupSegments = [];
+  let cursor = 0;
+  for (const group of groupOrder) {
+    const items = grouped.get(group) || [];
+    items.sort((a, b) => String(a.ID).localeCompare(String(b.ID)));
+    if (items.length > 0) {
+      groupSegments.push({ group, start: cursor, end: cursor + items.length - 1 });
+      orderedRows.push(...items);
+      cursor += items.length;
+    }
+  }
+
+  const xLabels = orderedRows.map((row) => row.ID);
+  const z = metrics.map((metric) => {
+    const values = orderedRows.map((row) => row[metric]);
+    return normalizeRow(values);
+  });
+
+  const trace = {
+    type: "heatmap",
+    x: xLabels,
+    y: metrics,
+    z,
+    colorscale: [
+      [0, "#2c7bb6"],
+      [0.5, "#f7f7f7"],
+      [1, "#d7191c"]
+    ],
+    zmid: 0,
+    hovertemplate: "<b>%{x}</b><br>%{y}: %{z:.3f}<extra></extra>"
+  };
+
+  const n = xLabels.length;
+  const annotations = [];
+  const shapes = [];
+  if (n > 1 && groupSegments.length > 0) {
+    for (const segment of groupSegments) {
+      const center = (segment.start + segment.end + 1) / (2 * n);
+      annotations.push({
+        xref: "paper",
+        yref: "paper",
+        x: center,
+        y: 1.06,
+        text: segment.group,
+        showarrow: false,
+        font: { size: 12, color: "#0f6cab" }
+      });
+    }
+
+    for (const segment of groupSegments.slice(0, -1)) {
+      const boundary = (segment.end + 1) / n;
+      shapes.push({
+        type: "line",
+        xref: "paper",
+        yref: "paper",
+        x0: boundary,
+        x1: boundary,
+        y0: 0,
+        y1: 1,
+        line: { color: "#d8e1ea", width: 1 }
+      });
+    }
+  }
+
+  const layout = {
+    margin: { l: 180, r: 20, t: 70, b: 120 },
+    paper_bgcolor: "#ffffff",
+    plot_bgcolor: "#ffffff",
+    xaxis: { tickangle: -45, automargin: true },
+    yaxis: { automargin: true },
+    annotations,
+    shapes
+  };
+
+  Plotly.newPlot(refs.immuneHeatmap, [trace], layout, {
+    responsive: true,
+    displayModeBar: false
+  });
+}
+
+function renderImmuneTable() {
+  const metrics = getFilteredImmuneMetrics();
+  const columns = ["RNA Group", "ID", ...metrics];
+  if (columns.length === 0) {
+    refs.immuneTableHead.innerHTML = "";
+    refs.immuneTableBody.innerHTML = "";
+    return;
+  }
+
+  const rows = getFilteredImmuneRows();
+  const limit = 200;
+  const viewRows = rows.slice(0, limit);
+
+  const truncatedNote = state.immuneTruncated ? "（API 已截断）" : "";
+  const tableNote = rows.length > limit ? "（表格仅显示前 200 行）" : "";
+  refs.immuneCounter.textContent = `共 ${rows.length} 个样本${truncatedNote}${tableNote}`;
+  refs.immuneTableHead.innerHTML = columns.map((col) => `<th>${escapeHtml(col)}</th>`).join("");
+  refs.immuneTableBody.innerHTML = viewRows
+    .map((row) => {
+      const group = inferImmuneGroup(row.ID);
+      const cells = [group, row.ID, ...metrics.map((metric) => row[metric])];
+      return `
+      <tr>
+        ${cells.map((value) => `<td>${formatImmuneValue(value)}</td>`).join("")}
+      </tr>
+      `;
+    })
+    .join("");
 }
 
 function renderChart() {
@@ -341,6 +613,14 @@ function debounce(fn, wait) {
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => fn(...args), wait);
   };
+}
+
+function setActiveView(view) {
+  const showImmune = view === "immune";
+  refs.diffSection.classList.toggle("is-hidden", showImmune);
+  refs.immuneSection.classList.toggle("is-hidden", !showImmune);
+  refs.viewDiffBtn.classList.toggle("is-active", !showImmune);
+  refs.viewImmuneBtn.classList.toggle("is-active", showImmune);
 }
 
 init().catch((error) => {

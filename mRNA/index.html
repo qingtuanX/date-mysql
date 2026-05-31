@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tuberculosis mRNA Analysis — Diff Expression &amp; Immune Infiltration</title>
+<style>
+  :root { --bg:#f8f9fa; --card:#fff; --text:#333; --accent:#2563eb; --green:#059669; --red:#dc2626; --gray:#6b7280; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:var(--bg); color:var(--text); line-height:1.6; padding:20px; }
+  .container { max-width:1100px; margin:0 auto; }
+  h1 { font-size:1.8em; border-bottom:3px solid var(--accent); padding-bottom:8px; margin:24px 0 16px; }
+  h2 { font-size:1.3em; margin:20px 0 10px; color:var(--accent); }
+  h3 { font-size:1.1em; margin:14px 0 8px; }
+  .cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:16px; margin:16px 0; }
+  .card { background:var(--card); border-radius:8px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+  .card h3 { margin-top:0; }
+  table { width:100%; border-collapse:collapse; margin:10px 0; font-size:.9em; }
+  th,td { padding:8px 12px; text-align:left; border-bottom:1px solid #e5e7eb; }
+  th { background:#f1f5f9; font-weight:600; }
+  .check { color:var(--green); font-weight:bold; }
+  .cross { color:var(--red); }
+  .method-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; }
+  .method-tag { display:inline-block; background:#e0e7ff; color:var(--accent); padding:4px 10px; border-radius:12px; font-size:.85em; font-weight:500; }
+  .method-tag.removed { background:#fef2f2; color:var(--red); text-decoration:line-through; }
+  .gallery { display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:12px; margin:12px 0; }
+  .gallery img { width:100%; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.1); cursor:pointer; transition:transform .15s; }
+  .gallery img:hover { transform:scale(1.02); }
+  figure { margin:0; }
+  figcaption { font-size:.8em; color:var(--gray); text-align:center; margin-top:4px; }
+  .nav { position:sticky; top:0; background:var(--card); z-index:10; padding:10px 16px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.1); margin-bottom:20px; display:flex; gap:16px; flex-wrap:wrap; }
+  .nav a { color:var(--accent); text-decoration:none; font-weight:500; }
+  .nav a:hover { text-decoration:underline; }
+  .stat { font-size:1.4em; font-weight:700; color:var(--accent); }
+  .label { font-size:.8em; color:var(--gray); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<nav class="nav">
+  <strong>Tuberculosis mRNA Analysis</strong>
+  <a href="#overview">Overview</a>
+  <a href="#diff">Diff Expression</a>
+  <a href="#immune">Immune Infiltration</a>
+  <a href="#plots">Plots</a>
+</nav>
+
+<h1 id="overview">Project Overview</h1>
+<div class="cards">
+  <div class="card">
+    <h3>GSE148036</h3>
+    <div class="stat">20</div><span class="label">samples</span>
+    <p>Lung tissue — Normal (5), TB (5), Adenocarcinoma (5), Sarcoidosis (5)</p>
+  </div>
+  <div class="card">
+    <h3>GSE158767</h3>
+    <div class="stat">10</div><span class="label">samples</span>
+    <p>Lung tissue — H group (5), L group (5)</p>
+  </div>
+  <div class="card">
+    <h3>GSE99374</h3>
+    <div class="stat">40</div><span class="label">samples</span>
+    <p>PBMC — Healthy (21), Latent TB infection (19)</p>
+  </div>
+</div>
+
+<h1 id="diff">Differential Expression Analysis</h1>
+<h2>Pipeline: limma-voom / limma-trend</h2>
+<table>
+  <tr><th>Dataset</th><th>Samples</th><th>Input</th><th>Method</th><th>Genes Analyzed</th></tr>
+  <tr><td>GSE148036</td><td>20</td><td>Raw counts (ENSG)</td><td><b>voom</b> → lmFit → eBayes</td><td>18,235</td></tr>
+  <tr><td>GSE158767</td><td>10</td><td>FPKM</td><td>log2 → lmFit → eBayes <b>(trend=TRUE)</b></td><td>3,518</td></tr>
+  <tr><td>GSE99374</td><td>40</td><td>Raw counts (SYMBOL)</td><td><b>voom</b> → lmFit → eBayes</td><td>14,097</td></tr>
+</table>
+<p>Contrast: <b>Target group vs all Others</b>. FDR correction: Benjamini-Hochberg.</p>
+
+<h2>Volcano Plots (|log2FC| ≥ 1, P &lt; 0.05)</h2>
+<div class="gallery" id="volcano-gallery"></div>
+
+<h2>Heatmaps (Top 50 DEGs by PValue)</h2>
+<div class="gallery" id="heatmap-gallery"></div>
+
+<script>
+// Auto-populate gallery from local PNGs — relative paths
+const diffDir = "差异化分析";
+const datasets = ["GSE148036","GSE158767","GSE99374"];
+const comps = {
+  GSE148036: ["Adenocarcinoma","Normal","Sacrodosis","Tuberculosis"],
+  GSE158767: ["H","L"],
+  GSE99374: ["Healthy","Latent_tuberculosis_infection"]
+};
+
+const volcanoDiv = document.getElementById("volcano-gallery");
+const heatmapDiv = document.getElementById("heatmap-gallery");
+
+datasets.forEach(ds => {
+  (comps[ds]||[]).forEach(comp => {
+    // Volcano
+    const vFig = document.createElement("figure");
+    const vImg = document.createElement("img");
+    vImg.src = `${diffDir}/${ds}/plots/${ds}_volcano_${comp}.png`;
+    vImg.alt = `${ds} Volcano: ${comp}`;
+    vImg.loading = "lazy";
+    const vCap = document.createElement("figcaption");
+    vCap.textContent = `${ds}: ${comp} vs Others`;
+    vFig.appendChild(vImg); vFig.appendChild(vCap);
+    volcanoDiv.appendChild(vFig);
+
+    // Heatmap
+    const hFig = document.createElement("figure");
+    const hImg = document.createElement("img");
+    hImg.src = `${diffDir}/${ds}/plots/${ds}_heatmap_${comp}.png`;
+    hImg.alt = `${ds} Heatmap: ${comp}`;
+    hImg.loading = "lazy";
+    const hCap = document.createElement("figcaption");
+    hCap.textContent = `${ds}: ${comp} vs Others`;
+    hFig.appendChild(hImg); hFig.appendChild(hCap);
+    heatmapDiv.appendChild(hFig);
+  });
+});
+</script>
+
+<h1 id="immune">Immune Infiltration Analysis</h1>
+<h2>Pipeline: counts/FPKM → TPM → IOBR deconvo_tme</h2>
+
+<table>
+  <tr><th>Method</th><th>Description</th><th>GSE148036</th><th>GSE158767</th><th>GSE99374</th></tr>
+  <tr><td>MCPcounter</td><td>Marker gene-based absolute scores</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+  <tr><td>ESTIMATE</td><td>Stromal / Immune composite scores</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+  <tr><td>EPIC</td><td>Immune + stromal cell fractions</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+  <tr><td>IPS</td><td>Immunophenoscore (MHC, EC, SC, CP)</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+  <tr><td>CIBERSORT</td><td>22 immune cell types (LM22)</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+  <tr><td>TIMER</td><td>6 types (LUAD reference)</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td></tr>
+  <tr><td>quanTIseq</td><td>10 cell types, absolute fractions</td><td class="check">✓</td><td class="cross">—</td><td class="cross">—</td></tr>
+  <tr><td><s>xCell</s></td><td><s>64 cell types (removed — too noisy)</s></td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+</table>
+
+<h2>Immune Infiltration Heatmaps</h2>
+<div class="gallery" id="immune-gallery"></div>
+<script>
+const immuneDiv = document.getElementById("immune-gallery");
+datasets.forEach(ds => {
+  const fig = document.createElement("figure");
+  const img = document.createElement("img");
+  img.src = `免疫浸润/${ds}/plots/immune_heatmap.png`;
+  img.alt = `${ds} Immune Infiltration`;
+  img.loading = "lazy";
+  const cap = document.createElement("figcaption");
+  cap.textContent = ds;
+  fig.appendChild(img); fig.appendChild(cap);
+  immuneDiv.appendChild(fig);
+});
+</script>
+
+<h1 id="plots">All Plots</h1>
+
+<h2>Differential Expression — Volcano</h2>
+<div class="gallery" id="all-volcano"></div>
+<h2>Differential Expression — Heatmap</h2>
+<div class="gallery" id="all-heatmap"></div>
+<h2>Immune Infiltration — Heatmap</h2>
+<div class="gallery" id="all-immune"></div>
+
+<script>
+document.getElementById("all-volcano").innerHTML = volcanoDiv.innerHTML;
+document.getElementById("all-heatmap").innerHTML = heatmapDiv.innerHTML;
+document.getElementById("all-immune").innerHTML = immuneDiv.innerHTML;
+</script>
+
+<footer style="text-align:center;margin-top:40px;padding:20px;color:var(--gray);font-size:.85em;">
+  <p>Generated with R 4.6.0 — limma-voom, limma-trend, IOBR deconvolution</p>
+  <p><a href="README_diff.md">Differential Analysis Docs</a> · <a href="README_immune.md">Immune Infiltration Docs</a></p>
+</footer>
+
+</div>
+</body>
+</html>

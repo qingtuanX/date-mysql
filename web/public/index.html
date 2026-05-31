@@ -16,7 +16,7 @@
   <body>
     <main class="page">
       <header class="hero">
-        <h1>mRNA 差异表达火山图交互平台</h1>
+        
         <p>悬浮或点击数据库记录，实时定位火山图散点并显示坐标</p>
       </header>
 
@@ -36,46 +36,85 @@
         <button id="clearPinBtn" type="button">取消固定点</button>
       </section>
 
-      <section class="content-grid">
-        <article class="panel chart-panel">
-          <div class="panel-head">
-            <h2>火山图</h2>
-            <span id="pointCounter"></span>
-          </div>
-          <div id="volcanoChart" class="chart"></div>
-        </article>
-
-        <article class="panel info-panel">
-          <h2>当前点坐标</h2>
-          <div id="pointInfo" class="point-info">
-            <p>未选择数据点</p>
-          </div>
-          <div class="legend">
-            <span class="tag up">Up</span>
-            <span class="tag down">Down</span>
-            <span class="tag ns">NotSig</span>
-          </div>
-        </article>
+      <section class="view-toggle">
+        <button id="viewDiffBtn" class="view-btn is-active" type="button">差异分析</button>
+        <button id="viewImmuneBtn" class="view-btn" type="button">免疫浸润</button>
       </section>
 
-      <section class="panel table-panel">
+      <section id="diffSection" class="view-section">
+        <section class="content-grid">
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <h2>火山图</h2>
+              <span id="pointCounter"></span>
+            </div>
+            <div id="volcanoChart" class="chart"></div>
+          </article>
+
+          <article class="panel info-panel">
+            <h2>当前点坐标</h2>
+            <div id="pointInfo" class="point-info">
+              <p>未选择数据点</p>
+            </div>
+            <div class="legend">
+              <span class="tag up">Up</span>
+              <span class="tag down">Down</span>
+              <span class="tag ns">NotSig</span>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel table-panel">
+          <div class="panel-head">
+            <h2>数据库结果（Top 200）</h2>
+            <span>鼠标悬浮/点击任意行即可联动图中点位</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Gene</th>
+                  <th>log2FC (X)</th>
+                  <th>-log10(FDR) (Y)</th>
+                  <th>FDR</th>
+                  <th>Regulation</th>
+                </tr>
+              </thead>
+              <tbody id="resultTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="immuneSection" class="panel immune-panel view-section is-hidden">
         <div class="panel-head">
-          <h2>数据库结果（Top 200）</h2>
-          <span>鼠标悬浮/点击任意行即可联动图中点位</span>
+          <h2>免疫浸润分析</h2>
+          <span id="immuneCounter"></span>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Gene</th>
-                <th>log2FC (X)</th>
-                <th>-log10(FDR) (Y)</th>
-                <th>FDR</th>
-                <th>Regulation</th>
-              </tr>
-            </thead>
-            <tbody id="resultTableBody"></tbody>
-          </table>
+        <div class="immune-controls">
+          <label>
+            RNA组
+            <select id="immuneGroupSelect"></select>
+          </label>
+          <label>
+            样本搜索
+            <input id="immuneSearch" type="text" placeholder="输入样本ID过滤" />
+          </label>
+          <label>
+            指标搜索
+            <input id="immuneMetricSearch" type="text" placeholder="输入指标名过滤" />
+          </label>
+        </div>
+        <div class="immune-grid">
+          <div id="immuneHeatmap" class="chart chart-heatmap"></div>
+          <div class="table-wrap">
+            <table class="immune-table">
+              <thead>
+                <tr id="immuneTableHead"></tr>
+              </thead>
+              <tbody id="immuneTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </section>
     </main>

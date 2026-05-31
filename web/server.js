@@ -1,11 +1,52 @@
 require("dotenv").config();
 
 const express = require("express");
+const fs = require("fs");
 const path = require("path");
+const readline = require("readline");
 const pool = require("./db");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
+const projectRoot = path.resolve(__dirname, "..");
+
+function parseCsvLine(line) {
+  const values = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      values.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current.trim());
+  return values.map((value) => value.replace(/^"|"$/g, ""));
+}
+
+function toNumberOrNull(value) {
+  if (value === undefined || value === null) return null;
+  const trimmed = String(value).trim();
+  if (trimmed === "" || trimmed.toUpperCase() === "NA") return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : trimmed;
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
@@ -142,6 +183,56 @@ app.get("/api/point/:id", async (req, res) => {
     res.json(rows[0]);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch point", error: error.message });
+  }
+});
+
+app.get("/api/immune", async (req, res) => {
+  const { dataset, limit } = req.query;
+  if (!dataset) {
+    res.status(400).json({ message: "dataset is required" });
+    return;
+  }
+
+  const maxRows = Math.max(50, Math.min(2000, Number(limit || 500)));
+  const filePath = path.join(projectRoot, "mRNA", dataset, "tme_combine.csv");
+
+  try {
+    await fs.promises.access(filePath, fs.constants.R_OK);
+  } catch (error) {
+    res.status(404).json({ message: "Immune infiltration file not found" });
+    return;
+  }
+
+  try {
+    const stream = fs.createReadStream(filePath, { encoding: "utf8" });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+    const rows = [];
+    let columns = [];
+    let lineNo = 0;
+
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+      lineNo += 1;
+      if (lineNo === 1) {
+        columns = parseCsvLine(line);
+        continue;
+      }
+
+      const values = parseCsvLine(line);
+      if (values.length === 0 || columns.length === 0) continue;
+      const row = {};
+      columns.forEach((col, idx) => {
+        const raw = values[idx] ?? "";
+        row[col] = col === "ID" ? raw : toNumberOrNull(raw);
+      });
+      rows.push(row);
+
+      if (rows.length >= maxRows) break;
+    }
+
+    res.json({ columns, rows, truncated: rows.length >= maxRows, maxRows });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load immune infiltration", error: error.message });
   }
 });
 
