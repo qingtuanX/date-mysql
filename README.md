@@ -1,148 +1,155 @@
-# date-mysql — mRNA 转录组差异分析与交互可视化平台
+# date-mysql — 结核病宿主 mRNA 转录组分析平台
 
-> mRNA Transcriptomics Differential Expression Analysis & Interactive Visualization Platform
-
----
-
-## 📖 项目简介 | Overview
-
-**date-mysql** 是一个面向生物信息学研究的 mRNA 转录组差异表达分析（DEA）全流程工具，整合了 R 语言统计分析、Python/Node.js 数据处理以及 Web 交互可视化。项目以 GEO 公共数据集为核心，使用 `limma` 进行多组差异分析，并通过 MySQL 数据库驱动的 Web 应用实现火山图的动态交互浏览。
-
-**date-mysql** is a full-stack bioinformatics pipeline for mRNA transcriptomics differential expression analysis (DEA). It integrates R-based statistical analysis, Node.js data processing, and an interactive web visualization platform. Using public GEO datasets, it performs multi-group differential analysis with `limma` and provides a MySQL-driven web interface for dynamic volcano plot exploration.
+> Tuberculosis Host mRNA Transcriptomics — Differential Expression, Immune Infiltration & Interactive Visualization
 
 ---
 
-## 🏗 项目结构 | Project Structure
+## 项目简介 | Overview
+
+面向结核病/肺病 mRNA 转录组数据，整合 **R limma-voom 差异分析**、**IOBR 免疫浸润去卷积** 和 **MySQL + Node.js 交互可视化**。
+
+| 层级 | 技术栈 |
+|------|--------|
+| **统计分析** | R (≥4.0), limma, edgeR, IOBR, ggplot2, pheatmap |
+| **后端** | Node.js, Express, MySQL2 |
+| **前端** | 原生 HTML/CSS/JS, Plotly.js |
+| **数据库** | MySQL 8.0 |
+
+---
+
+## 项目结构 | Structure
 
 ```
 date-mysql/
-├── mRNA/                          # 核心数据分析模块 | Core analysis module
-│   ├── GSE148036/                 # 结核病/肺癌数据集 | Tuberculosis/Lung Cancer
-│   ├── GSE158767/                 # 黑色素瘤 MITF 数据集 | Melanoma MITF
-│   ├── GSE99374/                  # 潜伏结核感染数据集 | Latent TB Infection
-│   ├── 【199】多组火山图/           # 多组火山图绘制模板（SCI 标准）
-│   ├── 【206】火山图/               # 单组火山图绘制模板（SCI 标准）
-│   └── 【378】limma多组差异分析/     # limma 多组差异分析 R Markdown 脚本
-├── web/                           # Web 交互应用 | Web application
-│   ├── public/                    # 前端静态资源（HTML/CSS/JS）
-│   ├── scripts/                   # 数据导入脚本（limma 结果 → MySQL）
-│   ├── sql/                       # 数据库初始化 SQL
-│   ├── server.js                  # Express 主服务入口
-│   └── db.js                      # MySQL 连接池配置
+├── mRNA/
+│   ├── GSE148036/                 # 原始数据 | Lung tissue (Normal/TB/AD/SA)
+│   ├── GSE158767/                 # 原始数据 | Lung tissue (H/L groups)
+│   ├── GSE99374/                  # 原始数据 | PBMC (Healthy/LTBI)
+│   ├── 差异化分析/                  # limma-voom/trend 差异分析结果
+│   │   ├── GSE148036/             #   → *_limma_test_result.*.txt + volcano/heatmap plots
+│   │   ├── GSE158767/
+│   │   └── GSE99374/
+│   ├── 免疫浸润/                    # TPM → IOBR 免疫细胞去卷积结果
+│   │   ├── GSE148036/             #   → 5-7 methods CSV + tme_combine + heatmap
+│   │   ├── GSE158767/
+│   │   └── GSE99374/
+│   ├── SCI绘图模板/                 # 多组/单组火山图 + limma R Markdown 模板
+│   ├── README_diff.md             # 差异分析详细文档
+│   ├── README_immune.md           # 免疫浸润详细文档
+│   └── index.html                 # 静态图表浏览页面
+├── web/                           # Web 交互应用
+│   ├── public/                    # 前端 (HTML/CSS/JS + Plotly 火山图)
+│   ├── scripts/import-limma.js    # limma 结果 → MySQL 导入
+│   ├── sql/init.sql               # 数据库建表 DDL
+│   └── server.js                  # Express API (datasets/comparisons/points/immune)
+├── result/                        # 独立配对比较结果 (DESeq2 等)
 └── README.md
 ```
 
 ---
 
-## 🚀 分析工作流 | Analysis Workflow
+## 差异分析 | Differential Expression
 
-### 1. 数据获取 | Data Acquisition
-从 NCBI GEO 下载 GSE series 数据集，包括临床元数据和表达矩阵（FPKM/TPM）。
+**方法**: limma-voom (counts) / limma-trend (FPKM)
 
-### 2. 预处理 | Preprocessing
-表达矩阵的标准化（Normalization）和 log 转换（Log-transformation）。
+| 数据集 | 样本数 | 分组 | 方法 | 分析基因数 |
+|--------|--------|------|------|-----------|
+| GSE148036 | 20 | Normal, TB, Adenocarcinoma, Sarcoidosis | voom | 18,235 |
+| GSE158767 | 10 | H, L | limma-trend | 3,518 |
+| GSE99374 | 40 | Healthy, Latent TB infection | voom | 14,097 |
 
-### 3. 差异分析 | Differential Analysis
-使用 R 包 `limma` 计算 Fold Change 和显著性 p-value，支持多组比较（如 `immune vs Others`、`MITF-low vs Others`）。
+对比设计: **Target group vs All Others** (non-pairwise)
 
-### 4. 免疫浸润分析 | Immune Infiltration
-整合 CIBERSORT、EPIC、ESTIMATE、MCP-counter 等算法评估肿瘤微环境免疫细胞组分。
+- `log2(counts+1)` → **voom (mean-variance modeling)** ✓
+- 低表达过滤: CPM > 1 (≥2 样本) / mean FPKM ≥ 1
+- FDR: Benjamini-Hochberg 校正
 
-### 5. 可视化 | Visualization
-- **火山图（Volcano Plot）**：log2FC → -log10(adj.P.Val)
-- **热图（Heatmap）**：差异表达基因聚类
-- **Web 交互面板**：MySQL 驱动，支持表格 ↔ 图表双向联动
-
----
-
-## 🛠 技术栈 | Tech Stack
-
-| 层级 | 技术 |
-|------|------|
-| 统计分析 | R (≥4.0), `limma`, `ggplot2`, `dplyr`, `Biobase` |
-| 后端 | Node.js, Express, MySQL2 |
-| 前端 | 原生 HTML/CSS/JS, Canvas API |
-| 数据库 | MySQL 8.0 |
+📖 [详细文档](mRNA/README_diff.md)
 
 ---
 
-## 🖥 Web 应用快速启动 | Web App Quick Start
+## 免疫浸润 | Immune Infiltration
 
-### 前置要求 | Prerequisites
+**方法**: counts/FPKM → **TPM 转换** → IOBR 多算法去卷积
 
-- **Node.js** ≥ 16
-- **MySQL** ≥ 8.0
-- **R** ≥ 4.0（仅数据分析需）| (analysis only)
+| 方法 | 说明 | GSE148036 | GSE158767 | GSE99374 |
+|------|------|:---:|:---:|:---:|
+| MCPcounter | Marker gene 绝对分数 | ✓ | ✓ | ✓ |
+| ESTIMATE | 基质/免疫综合评分 | ✓ | ✓ | ✓ |
+| EPIC | 免疫+基质细胞比例 | ✓ | ✓ | ✓ |
+| IPS | 免疫表型分数 | ✓ | ✓ | ✓ |
+| CIBERSORT | 22 种免疫细胞 LM22 | ✓ | ✓ | ✓ |
+| TIMER | 6 种免疫细胞 (LUAD) | ✓ | ✓ | — |
+| quanTIseq | 10 种细胞绝对比例 | ✓ | — | — |
 
-### 1. 初始化数据库 | Initialize Database
+- TPM 转换: `RPK = counts / (gene_length/1000)`, `TPM = RPK / sum(RPK) × 10⁶`
+- 基因长度来源: `Human.GRCh38.p13.annot.tsv` / `org.Hs.eg.db`
+- 已删除 xCell (64 种细胞类型噪声大，含与肺病无关的细胞)
 
-在 MySQL 中执行 `web/sql/init.sql`，创建 `date_mysql` 数据库和 `limma_results` 表。
+📖 [详细文档](mRNA/README_immune.md)
 
-```bash
-mysql -u root -p < web/sql/init.sql
+---
+
+## Web 应用 | Web App
+
+交互式火山图 + 免疫浸润热力图，MySQL 驱动联动查询。
+
 ```
-
-### 2. 配置环境变量 | Configure Environment
-
-```bash
-cp web/.env.example web/.env
-# 编辑 web/.env，填入 MySQL 连接信息
-```
-
-### 3. 安装依赖 | Install Dependencies
-
-```bash
 cd web
 npm install
+npm start               # → http://localhost:3000
+npm run import:data     # 差异分析结果 → MySQL 导入
 ```
 
-### 4. 导入数据 | Import Data
+**API 端点**:
+| 端点 | 说明 |
+|------|------|
+| `GET /api/datasets` | 获取数据集列表 |
+| `GET /api/comparisons?dataset=` | 获取某数据集比较组 |
+| `GET /api/points?dataset=&comparison=` | 获取火山图散点 |
+| `GET /api/top?dataset=&comparison=` | Top N 差异基因表 |
+| `GET /api/immune?dataset=` | 免疫浸润数据 + 分组热力图 |
 
-将 `mRNA/GSE*/` 下的 limma 分析结果批量导入 MySQL：
+---
 
+## 快速开始 | Quick Start
+
+**1. 差异分析**（需要有 R + limma/edgeR）:
 ```bash
+cd mRNA/差异化分析
+Rscript GSE148036/run_limma_gse148036.R
+Rscript GSE158767/run_limma_gse158767.R
+Rscript GSE99374/run_limma_gse99374.R
+```
+
+**2. 免疫浸润**（需要有 R + IOBR）:
+```bash
+Rscript generate_all_plots.R    # 重新生成全部图表
+```
+
+**3. 数据库导入 + Web 服务**:
+```bash
+cd web
+mysql -u root -p < sql/init.sql
 npm run import:data
-```
-
-### 5. 启动服务 | Start Server
-
-```bash
 npm start
 ```
 
-浏览器打开 `http://localhost:3000`。
+---
+
+## 数据来源 | Data Sources
+
+| 数据集 | GEO ID | 平台 | 组织 |
+|--------|--------|------|------|
+| GSE148036 | [GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE148036) | GPL21290 Illumina HiSeq 3000 | Lung tissue |
+| GSE158767 | [GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE158767) | Illumina HiSeq | Lung tissue |
+| GSE99374 | [GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE99374) | GPL16791 Illumina HiSeq 2500 | PBMC |
 
 ---
 
-## 🖱 Web 交互说明 | Interaction Guide
+## 版本历史 | Changelog
 
-| 操作 | 效果 |
+| 版本 | 更新 |
 |------|------|
-| **表格行悬停** | 火山图中临时高亮对应点并显示坐标 |
-| **表格行点击** | 固定选中点，显示详细信息 |
-| **图中点点击** | 反向联动，更新坐标信息面板 |
-| **取消固定** | 恢复 hover 联动模式 |
-
----
-
-## 📊 数据集说明 | Datasets
-
-| 数据集 | 来源 | 样本数 | 研究方向 |
-|--------|------|--------|----------|
-| GSE148036 | GEO | 116 | 结核病 vs 腺癌 vs 结节病 vs 正常 |
-| GSE158767 | GEO | 47 | 黑色素瘤 MITF 高低表达分组 |
-| GSE99374 | GEO | 179 | 潜伏结核感染 vs 健康对照 |
-
----
-
-## ⚠️ 注意事项 | Notes
-
-- 部分 `.zip` / `.gz` 文件为原始数据和注释文件的压缩包，超过 50MB 建议使用 Git LFS 管理。
-- `web/scripts/import-limma.js` 需在配置好数据库后运行。
-- `.env` 文件包含敏感数据库密码，已加入 `.gitignore`，请勿提交。
-
----
-
-## 📄 License
-
-This project is for academic research purposes.
+| v2.0 | ✅ 差异分析改用 **voom/trend**, 免疫浸润改用 **TPM 转换**, 图表全部重生成, 文档补全 |
+| v1.0 | 初始: `log2(counts+1)` limma, `deconvo_tme` with raw counts |

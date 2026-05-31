@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>date-mysql — 结核病宿主 mRNA 分析平台</title>
+<style>
+:root{--bg:#f3f7fb;--card:#fff;--text:#16202a;--accent:#0f6cab;--green:#059669;--red:#dc2626;--muted:#5d6b7a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;padding:20px}
+.container{max-width:1000px;margin:0 auto}
+h1{font-size:2em;border-bottom:3px solid var(--accent);padding-bottom:10px;margin:30px 0 20px}
+h2{font-size:1.3em;color:var(--accent);margin:24px 0 12px}
+h3{font-size:1.1em;margin:16px 0 8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:16px 0}
+.card{background:var(--card);border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.card h3{margin-top:0}
+.stat{font-size:2em;font-weight:700;color:var(--accent)}
+.label{font-size:.85em;color:var(--muted)}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.9em}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid #e5e7eb}
+th{background:#f1f5f9;font-weight:600}
+.c{color:var(--green);font-weight:700}
+.x{color:var(--red)}
+.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:12px 0}
+.gallery img{width:100%;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);cursor:pointer}
+.gallery img:hover{transform:scale(1.03);transition:transform .15s}
+figure{margin:0}
+figcaption{font-size:.82em;color:var(--muted);text-align:center;margin-top:6px}
+.nav{position:sticky;top:0;background:var(--card);z-index:10;padding:12px 20px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.08);margin-bottom:24px;display:flex;gap:20px;flex-wrap:wrap}
+.nav a{color:var(--accent);text-decoration:none;font-weight:500;font-size:.95em}
+.nav strong{color:var(--text)}
+.method-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}
+.method-tag{display:inline-block;background:#e0e7ff;color:var(--accent);padding:5px 14px;border-radius:16px;font-size:.85em;font-weight:500;text-align:center}
+footer{text-align:center;margin-top:40px;padding:20px;color:var(--muted);font-size:.85em;border-top:1px solid #e5e7eb}
+footer a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="container">
+
+<nav class="nav">
+<strong>date-mysql</strong>
+<a href="#about">简介</a>
+<a href="#datasets">数据集</a>
+<a href="#diff">差异分析</a>
+<a href="#immune">免疫浸润</a>
+<a href="#plots">可视化</a>
+<a href="https://github.com/qingtuanX/date-mysql">GitHub</a>
+</nav>
+
+<h1 id="about">结核病宿主 mRNA 转录组分析平台</h1>
+<p>面向 GEO 公共数据集，整合 <b>limma-voom 差异分析</b>、<b>IOBR 免疫微环境去卷积</b> 和 <b>Web 交互可视化</b>。</p>
+
+<div class="cards">
+<div class="card"><h3>差异分析</h3><div class="stat">108,270</div><span class="label">条差异表达记录</span><p>3 个数据集 · limma-voom/trend · Benjamini-Hochberg FDR</p></div>
+<div class="card"><h3>免疫浸润</h3><div class="stat">5-7</div><span class="label">种去卷积方法</span><p>MCPcounter · CIBERSORT · EPIC · ESTIMATE · TIMER · IPS · quanTIseq</p></div>
+<div class="card"><h3>Web 交互</h3><div class="stat">Plotly</div><span class="label">火山图/热力图</span><p>MySQL 驱动 · 悬浮联动 · 表图互查</p></div>
+</div>
+
+<h2 id="datasets">数据集</h2>
+<table>
+<tr><th>GEO ID</th><th>平台</th><th>组织</th><th>样本数</th><th>分组</th></tr>
+<tr><td>GSE148036</td><td>Illumina HiSeq 3000</td><td>Lung tissue</td><td>20</td><td>Normal · TB · Adenocarcinoma · Sarcoidosis</td></tr>
+<tr><td>GSE158767</td><td>Illumina HiSeq</td><td>Lung tissue</td><td>10</td><td>H · L</td></tr>
+<tr><td>GSE99374</td><td>Illumina HiSeq 2500</td><td>PBMC</td><td>40</td><td>Healthy · Latent TB</td></tr>
+</table>
+
+<h2 id="diff">差异分析</h2>
+<table>
+<tr><th>数据集</th><th>方法</th><th>输入</th><th>分析基因</th><th>FDR&lt;0.05 & |log2FC|≥1</th></tr>
+<tr><td>GSE148036</td><td><b>voom</b> + limma</td><td>Raw counts (ENSG)</td><td>18,235</td><td>Up: 687 · Down: 999</td></tr>
+<tr><td>GSE158767</td><td><b>limma-trend</b></td><td>FPKM</td><td>3,518</td><td>Up: 12 · Down: 17</td></tr>
+<tr><td>GSE99374</td><td><b>voom</b> + limma</td><td>Raw counts (SYMBOL)</td><td>14,097</td><td>Up: 0 · Down: 0</td></tr>
+</table>
+
+<h2 id="immune">免疫浸润（TPM → IOBR 去卷积）</h2>
+<table>
+<tr><th>方法</th><th>细胞类型数</th><th>GSE148036</th><th>GSE158767</th><th>GSE99374</th></tr>
+<tr><td>MCPcounter</td><td>10</td><td class="c">✓</td><td class="c">✓</td><td class="c">✓</td></tr>
+<tr><td>ESTIMATE</td><td>4 (评分)</td><td class="c">✓</td><td class="c">✓</td><td class="c">✓</td></tr>
+<tr><td>EPIC</td><td>8</td><td class="c">✓</td><td class="c">✓</td><td class="c">✓</td></tr>
+<tr><td>IPS</td><td>6 (评分)</td><td class="c">✓</td><td class="c">✓</td><td class="c">✓</td></tr>
+<tr><td>CIBERSORT</td><td>22 (LM22)</td><td class="c">✓</td><td class="c">✓</td><td class="c">✓</td></tr>
+<tr><td>TIMER</td><td>6</td><td class="c">✓</td><td class="c">✓</td><td class="x">—</td></tr>
+<tr><td>quanTIseq</td><td>10</td><td class="c">✓</td><td class="x">—</td><td class="x">—</td></tr>
+</table>
+
+<h2 id="plots">可视化图表</h2>
+
+<h3>差异分析 — 火山图</h3>
+<div class="gallery" id="volcano-gallery"></div>
+
+<h3>差异分析 — 热力图 (Top 50 DEGs)</h3>
+<div class="gallery" id="heatmap-gallery"></div>
+
+<h3>免疫浸润 — 热力图</h3>
+<div class="gallery" id="immune-gallery"></div>
+
+<script>
+const datasets=["GSE148036","GSE158767","GSE99374"];
+const comps={GSE148036:["Adenocarcinoma","Normal","Sacrodosis","Tuberculosis"],GSE158767:["H","L"],GSE99374:["Healthy","Latent_tuberculosis_infection"]};
+
+["volcano","heatmap"].forEach(type=>{
+  const div=document.getElementById(type+"-gallery");
+  datasets.forEach(ds=>{
+    (comps[ds]||[]).forEach(comp=>{
+      const f=document.createElement("figure");
+      const i=document.createElement("img");
+      i.src=`../mRNA/差异化分析/${ds}/plots/${ds}_${type}_${comp}.png`;
+      i.alt=`${ds} ${comp}`; i.loading="lazy";
+      const c=document.createElement("figcaption");
+      c.textContent=`${ds}: ${comp} vs Others`;
+      f.appendChild(i);f.appendChild(c);div.appendChild(f);
+    });
+  });
+});
+
+const imDiv=document.getElementById("immune-gallery");
+datasets.forEach(ds=>{
+  const f=document.createElement("figure");
+  const i=document.createElement("img");
+  i.src=`../mRNA/免疫浸润/${ds}/plots/immune_heatmap.png`;
+  i.alt=`${ds} immune`; i.loading="lazy";
+  const c=document.createElement("figcaption");c.textContent=ds;
+  f.appendChild(i);f.appendChild(c);imDiv.appendChild(f);
+});
+</script>
+
+<footer>
+<p>R 4.6.0 · limma-voom · limma-trend · edgeR · IOBR · Plotly.js</p>
+<p><a href="https://github.com/qingtuanX/date-mysql">GitHub Repository</a> · <a href="../mRNA/README_diff.md">差异分析文档</a> · <a href="../mRNA/README_immune.md">免疫浸润文档</a></p>
+</footer>
+</div>
+</body>
+</html>
