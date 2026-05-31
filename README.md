@@ -8,7 +8,7 @@
 
 | 站点 | 地址 |
 |------|------|
-| **交互式分析平台** (部署服务器) | http://49.235.115.164 |
+| **交互式分析平台** (部署服务器) | http://ceshi-hwg.xyz |
 | **图表展示页** (GitHub Pages) | https://qingtuanx.github.io/date-mysql/ |
 
 ---
